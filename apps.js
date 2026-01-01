@@ -1,59 +1,67 @@
-const API_URL = "https://latest.currency-api.pages.dev/v1/currencies";
-const fromSelect = document.getElementById("from");
-const toSelect = document.getElementById("to");
-const output = document.getElementById("output");
-const convertBtn = document.getElementById("convertBtn");
+import { currencies } from "./codes.js";
 
+document.addEventListener("DOMContentLoaded", () => {
+  const API_URL = "https://latest.currency-api.pages.dev/v1/currencies";
 
-async function loadCurrencies() {
-    try {
-        const response = await fetch(`${API_URL}.json`);
-        const data = await response.json();
-        const currencies = Object.keys(data);
-        currencies.forEach(currency => {
-            const option1 = document.createElement("option");
-            option1.value = currency;
-            option1.text = currency.toUpperCase();
-            const option2 = option1.cloneNode(true);
-            fromSelect.appendChild(option1);
-            toSelect.appendChild(option2);
-        });
-        fromSelect.value = "usd";
-        toSelect.value = "pkr";
-    } catch (error) {
-        console.error("Error loading currencies", error);
-        output.innerText = "Failed to load currencies!";
-    }
-}
+  const fromBox = document.getElementById("from");
+  const toBox = document.getElementById("to");
+  const convertBtn = document.querySelector("button");
+  const output = document.querySelector("p");
 
+  setupDropdown(fromBox, "USD");
+  setupDropdown(toBox, "PKR");
 
-async function convertCurrency() {
-    const amount = document.getElementById("amount").value.trim();
-    const from = fromSelect.value;
-    const to = toSelect.value;
+  convertBtn.addEventListener("click", async () => {
+    const amountInput = document.querySelector("input");
+    const amount = amountInput.value;
 
-    if (!amount || isNaN(amount) || Number(amount) <= 0) {
-        output.innerText = "Please enter a valid amount";
-        return;
+    const from = fromBox.querySelector("div").dataset.value;
+    const to = toBox.querySelector("div").dataset.value;
+
+    if (!amount || amount <= 0) {
+      output.innerText = "Enter a valid amount";
+      return;
     }
 
     try {
-        const response = await fetch(`${API_URL}/${from}.json`);
-        const data = await response.json();
-        const rate = data[from][to];
-        if (!rate) {
-            output.innerText = `Conversion rate not available for ${from} to ${to}`;
-            return;
-        }
-        const convertedAmount = (amount * rate).toFixed(2);
-        output.innerText = `${amount} ${from.toUpperCase()} = ${convertedAmount} ${to.toUpperCase()}`;
-    } catch (error) {
-        output.innerText = "Error fetching conversion!";
-        console.error(error);
+      const res = await fetch(`${API_URL}/${from.toLowerCase()}.json`);
+      const data = await res.json();
+      const rate = data[from.toLowerCase()][to.toLowerCase()];
+      output.innerText = `${amount} ${from} = ${(amount * rate).toFixed(2)} ${to}`;
+    } catch {
+      output.innerText = "Conversion failed";
     }
-}
+  });
 
+  function setupDropdown(wrapper, defaultCode) {
+    const list = wrapper.querySelector(".country-list");
+    const display = wrapper.querySelector("div");
 
-loadCurrencies();
+    list.innerHTML = "";
 
-convertBtn.addEventListener("click", convertCurrency);
+    currencies.forEach(country => {
+      const item = document.createElement("div");
+      item.className = "flex items-center gap-2 px-3 py-2 hover:bg-slate-600 cursor-pointer";
+      item.innerHTML = `<img src="https://flagcdn.com/w20/${country.flag}.png" class="w-5 h-4"><span>${country.code} - ${country.name}</span>`;
+      item.addEventListener("click", () => {
+        display.innerHTML = `<img src="https://flagcdn.com/w20/${country.flag}.png" class="w-5 h-4"><span>${country.code}</span>`;
+        display.dataset.value = country.code;
+        list.classList.add("hidden");
+      });
+      list.appendChild(item);
+      if (country.code === defaultCode) {
+        display.innerHTML = `<img src="https://flagcdn.com/w20/${country.flag}.png" class="w-5 h-4"><span>${country.code}</span>`;
+        display.dataset.value = country.code;
+      }
+    });
+
+    wrapper.addEventListener("click", e => {
+      e.stopPropagation();
+      list.classList.toggle("hidden");
+    });
+
+    document.addEventListener("click", () => {
+      list.classList.add("hidden");
+    });
+  }
+});
